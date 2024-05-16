@@ -60,10 +60,18 @@ function getNSiblingsDivs(el, document, n = null) {
     }
   }
 
+  if (!xpathGrouping[selectedXpathPattern]) {
+    if (cmpFn(el.children.length)) {
+      return Array.from(el.children);
+    }
+  }
+
   return xpathGrouping[selectedXpathPattern] || null;
 }
 
-export function columnsParser(el, window) {
+export function columnsParser(el, window, props) {
+  const { layout, includeSelector } = props;
+  const { numCols = 0, numRows = 1 } = layout;
   const { document } = window;
 
   el.querySelectorAll('script, style').forEach((e) => e.remove() );
@@ -82,10 +90,23 @@ export function columnsParser(el, window) {
     }
   });
 
-  const columns = getNSiblingsDivs(el, document, (n) => n > 1);
+  let columns = getNSiblingsDivs(el, document, (n) => n >= numCols);
+  if (numRows > 1 && columns?.length === numCols * numRows) {
+    const newColumns = [];
+    for (let i = 0; i < columns.length; i += numRows) {
+      newColumns.push(columns.slice(i, i + numRows));
+    }
+    columns = newColumns;
+  }
+
+  let blockRow = ['columns'];
+  if (includeSelector && props.domClasses && props.domClasses.length > 0) {
+    blockRow = [`columns (${props.domClasses.replaceAll('.', ' ')})`];
+  }
+
   if (columns) {
     const block = WebImporter.DOMUtils.createTable([
-      [`columns`],
+      blockRow,
       columns,
     ], document);
     // el.replaceWith(block);

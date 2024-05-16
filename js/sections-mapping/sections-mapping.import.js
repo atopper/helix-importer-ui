@@ -1,8 +1,12 @@
 /**
  * GENERIC IMPORT SCRIPT FOR SECTIONS MAPPING DATA
  */
-
 import * as parsers from './parsers/parsers.js';
+import { initOptionFields } from '../shared/fields.js';
+import { getImporterSectionMapping } from '../import/mappings.js';
+
+const PARENT_SELECTOR = '.import';
+const CONFIG_PARENT_SELECTOR = `${PARENT_SELECTOR} form`;
 
 /**
  * functions
@@ -15,19 +19,7 @@ export function generateDocumentPath({ document, url }) {
 }
 
 function getSectionsMappingData(url) {
-  const item = localStorage.getItem('helix-importer-sections-mapping');
-
-  if (item) {
-    const mData = JSON.parse(item);
-    return mData.mapping;
-    // TODO - support multiple mappings
-    // const found = mData.find((m) => m.url === url);
-    // if (found) {
-    //   return found;
-    // }
-  }
-
-  return null;
+  return getImporterSectionMapping(url) ?? null;
 }
 
 function getElementByXpath(document, path) {
@@ -90,18 +82,20 @@ export default {
         }
       }
     });
-    
+
   },
 
   transform: async ({ document, params }) => {
 
-    // // console.log(parsers?);
-    // debugger;
+    // console.log(parsers?);
+
+    const fields = initOptionFields(CONFIG_PARENT_SELECTOR);
 
     /**
      * get sections mapping data
      */
     const mapping = getSectionsMappingData(params.originalURL);
+    debugger;
     if (!mapping) {
       throw new Error('No sections mapping data found, aborting');
     }
@@ -121,20 +115,25 @@ export default {
 
     mapping.forEach((m, idx) => {
       // get dom element from xpath string
-      const el = elementsToParse[idx  ];
+      const el = elementsToParse[idx];
       if (el) {
         console.log('found element', m.section, el);
-        const parser = parsers[m.mapping];
+        let parser = parsers[m.mapping];
+        if (!parser && m?.mapping.includes(':')) {
+          console.log('Custom parser encountered:', m.mapping);
+          parser = parsers.tableWrap;
+        }
         if (parser) {
-          const block = parser(el, window);
+          const includeSelector = fields['import-include-selector-in-mapping'];
+          const block = parser(el, window, {...m, includeSelector: includeSelector} );
           if (block) {
             importedContent.appendChild(block);
           }
         } else {
-          console.warn('parser not found', m.mapping);
+          // TODO
         }
       } else {
-        console.warn('element not found', m.section, m.xpath);
+        console.warn('element not found:', m.section, m.xpath);
       }
     });
 

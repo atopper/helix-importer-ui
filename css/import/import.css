@@ -201,18 +201,33 @@
     margin: 0;
   }
 
+  & .row:first-child .move-up {
+    display: none;
+  }
+
   & .row {
     padding: 1rem;
     display: flex;
     flex-direction: row;
-    gap: 5rem;
+    gap: 2rem;
     align-items: center;
     cursor: pointer;
 
-    & #sec-id {
-      min-width: 200px;
+    & #sec-dom-selector {
+      min-width: 100px;
       height: 1rem;
       border: none;
+      min-width: 240px;
+      height: 1rem;
+      border: none;
+
+      & span {
+        overflow: hidden;
+        text-wrap: nowrap;
+        text-overflow: ellipsis;
+        width: 150px;
+        display: block;
+      }
     }
 
     & #sec-color {
@@ -222,7 +237,12 @@
     }
 
     & #sec-layout {
+      width: 107px;
       flex-shrink: 0;
     }
+  }
+
+  .hidden {
+    display: none;
   }
 }

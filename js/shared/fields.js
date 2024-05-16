@@ -9,6 +9,9 @@ const attachOptionFieldsListeners = (fields, parent) => {
       const value = isCheckbox(field) ? field.checked : field.value;
       fields[field.id] = value;
       localStorage.setItem(`option-field-${field.id}`, value);
+      if (field.id === 'detect-url') {
+        localStorage.setItem('option-field-import-url', value);
+      }
     });
   });
 };

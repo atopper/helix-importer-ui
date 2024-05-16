@@ -44,8 +44,8 @@
                 <div class="section-cols">
                     <div class="section-col">
                         <form class="import-form">
-                            <sp-field-label for="import-url" required>URL</sp-field-label>
-                            <sp-textfield class="option-field" id="import-url" type="url">
+                            <sp-field-label for="detect-url" required>URL</sp-field-label>
+                            <sp-textfield class="option-field" id="detect-url" type="url">
                                 <sp-help-text slot="help-text">https://www.example.com</sp-help-text>
                                 <sp-help-text slot="negative-help-text">Please enter a valid URL.</sp-help-text>
                             </sp-textfield>
@@ -83,6 +83,10 @@
 
                                         <sp-field-label for="import-custom-headers">Custom headers</sp-field-label>
                                         <sp-textfield class="option-field" id="import-custom-headers" multiline placeholder="Define your custom headers as a JSON object with key/value (header name/header value)"></sp-textfield>
+
+                                        <sp-checkbox class="option-field" id="import-include-selector-in-mapping" checked>
+                                            Include ID and Classes in import with mapping
+                                        </sp-checkbox>
                                     </div>
                                 </sp-accordion-item>
                             </sp-accordion>
@@ -111,7 +115,7 @@
                                     <div id="mapping-editor">
                                         <div class="row">
                                             <h2 id="sec-color">Color</h2>
-                                            <h2 id="sec-id">Id</h2>
+                                            <h2 id="sec-dom-selector">Id/Classes</h2>
                                             <h2 id="sec-layout">Layout<br />(cols x rows)</h2>
                                             <h2>Mapping</h2>
                                             <h2>&nbsp;</h2>

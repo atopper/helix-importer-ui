@@ -16,6 +16,7 @@ import { asyncForEach, getElementByXpath } from '../shared/utils.js';
 import PollImporter from '../shared/pollimporter.js';
 import alert from '../shared/alert.js';
 import { toggleLoadingButton } from '../shared/ui.js';
+import { getImporterSectionMapping, saveImporterSectionsMapping } from './mappings.js';
 
 const PARENT_SELECTOR = '.import';
 const CONFIG_PARENT_SELECTOR = `${PARENT_SELECTOR} form`;
@@ -434,11 +435,60 @@ const detectSections = async (src, frame) => {
     // {
     //   id: <sectionId>,
     //   xpath: <xpath>,
+    //   id: <optional: id from box>
+    //   classes: <optional: classes from box>
     //   mapping: <mapping>,
     // },
   ];
 
-  function getBlockPicker(value = 'unset') {
+  function saveMappingChange({ newMapping, newSelector }) {
+    // update mapping data
+    const mItem = mappingData.find((m) => m.id === selectedSection.id);
+    if (mItem) {
+      mItem.mapping = newMapping ?? mItem.mapping;
+      mItem.selector = newSelector ?? mItem.selector;
+    } else if (selectedSection.id !== null) {
+      const domSelector = selectedSection.domId
+        ?? selectedSection.domClasses
+        ?? selectedSection.xpath;
+      mappingData.push({
+        id: selectedSection.id,
+        selector: newSelector ?? domSelector,
+        mapping: newMapping ?? selectedSection.mapping,
+      });
+    } else {
+      // eslint-disable-next-line no-console
+      console.log('Id was null', JSON.stringify(selectedSection, undefined, 2));
+      return;
+    }
+    saveImporterSectionsMapping(originalURL, mappingData);
+  }
+
+  function getTextField(id, placeHolder, value, changeType, visible) {
+    const textField = document.createElement('sp-textfield');
+    textField.setAttribute('id', id);
+    textField.setAttribute('placeHolder', placeHolder);
+
+    if (!visible) {
+      textField.classList.add('hidden');
+    }
+    textField.addEventListener('change', (e) => {
+      if (e.target.value && e.target.value.length > 0) {
+        const mappingName = e.target.parentElement.querySelector('#block-picker');
+        const args = {};
+        args[changeType] = `${mappingName.value}:${e.target.value}`;
+        saveMappingChange(args);
+      }
+    });
+    if (value) {
+      textField.setAttribute('value', value);
+    }
+
+    return textField;
+  }
+
+  function getBlockPicker(value = 'unset', forceSave = false) {
+    const blockPickerDiv = document.createElement('div');
     const blockPicker = document.createElement('sp-picker');
     blockPicker.setAttribute('label', 'Mapping ...');
     blockPicker.setAttribute('id', 'block-picker');
@@ -447,11 +497,16 @@ const detectSections = async (src, frame) => {
       [{ label: 'Exclude', attributes: { value: 'exclude' } }],
       [{ label: 'Default Content', attributes: { value: 'defaultContent' } }],
       [
-        { label: 'Hero', attributes: { value: 'hero', disabled: true } },
+        { label: 'Header', attributes: { value: 'header' } },
+        { label: 'Hero', attributes: { value: 'hero' } },
+        { label: 'Cards', attributes: { value: 'cards' } },
         { label: 'Columns', attributes: { value: 'columns' } },
-        { label: 'Carousel', attributes: { value: 'carousel', disabled: true } },
+        { label: 'Carousel', attributes: { value: 'carousel' } },
+        { label: 'Footer', attributes: { value: 'footer' } },
       ],
-      [{ label: 'Snapshot', attributes: { value: 'snapshot', disabled: true } }],
+      [{ label: 'Autoblock', attributes: { value: 'auto' } }],
+      [{ label: 'Custom Content', attributes: { value: 'custom' } }],
+      [{ label: 'Fragment', attributes: { value: 'fragment' } }],
     ].forEach((group, idx, arr) => {
       group.forEach((item) => {
         const mItem = document.createElement('sp-menu-item');
@@ -467,28 +522,63 @@ const detectSections = async (src, frame) => {
       }
     });
 
-    blockPicker.setAttribute('value', value);
+    const [mapping, details] = value.split(':');
+    const customBlock = getTextField(
+      'custom-block',
+      'Enter valid custom block name.',
+      details,
+      'newMapping',
+      mapping === 'custom',
+    );
+    const fragmentBlock = getTextField(
+      'fragment-block',
+      'Enter fragment path.',
+      details,
+      'newMapping',
+      mapping === 'fragment',
+    );
+
+    blockPicker.setAttribute('value', mapping);
 
     blockPicker.addEventListener('change', (e) => {
-      // update mapping data
-      const mItem = mappingData.find((m) => m.id === selectedSection.id);
-      if (mItem) {
-        mItem.mapping = e.target.value;
+      const customName = e.target.parentElement.querySelector('#custom-block');
+      const fragmentPath = e.target.parentElement.querySelector('#fragment-block');
+      if (e.target.value === 'custom') {
+        fragmentPath.classList.add('hidden');
+        customName.classList.remove('hidden');
+        if (customName.value && customName.value.length > 0) {
+          saveMappingChange({ newMapping: `custom:${customName.value}` });
+        }
+      } else if (e.target.value === 'fragment') {
+        customName.classList.add('hidden');
+        fragmentPath.classList.remove('hidden');
+        if (fragmentPath.value && fragmentPath.value.length > 0) {
+          saveMappingChange({ newMapping: `fragment:${fragmentPath.value}` });
+        }
       } else {
-        mappingData.push({
-          id: selectedSection.id,
-          xpath: selectedSection.xpath,
-          mapping: e.target.value,
-        });
+        customName.classList.add('hidden');
+        fragmentPath.classList.add('hidden');
+        saveMappingChange({ newMapping: e.target.value });
       }
-      // save sections mapping data
-      localStorage.setItem('helix-importer-sections-mapping', JSON.stringify({
-        url: originalURL,
-        mapping: mappingData,
-      }));
     });
 
-    return blockPicker;
+    if (forceSave) {
+      saveMappingChange({ newMapping: value });
+    }
+
+    // const combobox = document.createElement('sp-combobox');
+    // combobox.setAttribute('size', 'm');
+    // combobox.setAttribute('label', 'color');
+    // combobox.innerHTML = '<sp-menu-item value="red">Red</sp-menu-item>' +
+    // '<sp-menu-item value="green">Green</sp-menu-item>' +
+    // '<sp-menu-item value="blue">Blue</sp-menu-item>';
+    // blockPickerDiv.appendChild(combobox);
+
+    blockPickerDiv.appendChild(blockPicker);
+    blockPickerDiv.appendChild(customBlock);
+    blockPickerDiv.appendChild(fragmentBlock);
+
+    return blockPickerDiv;
   }
 
   function getMappingRow(section, idx = 1) {
@@ -497,11 +587,33 @@ const detectSections = async (src, frame) => {
     row.dataset.sectionId = section.id;
     row.dataset.xpath = section.xpath;
     row.classList.add('row');
+    const numCols = section?.layout?.numCols ? section.layout.numCols : 0;
+    const numRows = section?.layout?.numRows ? section.layout.numRows : 0;
+
+    const domId = !section.domId || section.domId === 'null' ? '' : `#${section.domId}`;
+    const classes = section.domClasses ? `.${section.domClasses}` : '';
+
+    const domSelector = getTextField(
+      'sec-dom-selector',
+      'XPath or Id + classes',
+      (domId + classes).length > 0 ? `${domId}${classes}` : undefined,
+      'newSelector',
+      true,
+    );
+    // <h3 id="sec-id"><strong>${section.id}</strong></h3>
+    const title = `${section.xpath}\n${domSelector.innerText}`;
     row.innerHTML = `
     <div id="sec-color" style="background-color: ${section.color || 'white'};"></div>
-    <h3 id="sec-id"><strong>${section.id}</strong></h3>
-    <h3 id="sec-layout">${section.layout.numCols} x ${section.layout.numRows}</h3>
+    <div title="${title}">${domSelector.outerHTML}</div>
+    <h3 id="sec-layout">${numCols} x ${numRows}</h3>
     `;
+
+    // let savePicker = false;
+    // let pickerValue = section.mapping;
+    // if (pickerValue === 'unset' && (numCols > 1 || numRows > 1)) {
+    //   pickerValue = 'columns';
+    //   savePicker = true;
+    // }
 
     const mappingPicker = getBlockPicker(section.mapping);
     mappingPicker.dataset.sectionId = section.id;
@@ -514,21 +626,38 @@ const detectSections = async (src, frame) => {
     deleteBtn.innerHTML = '<sp-icon-delete></sp-icon-delete>';
     row.appendChild(deleteBtn);
     deleteBtn.addEventListener('click', (e) => {
-      console.log(e);
-      console.log('delete section', section.id);
-      // row
       const rowEl = e.target.closest('.row');
       if (rowEl) {
         const id = rowEl.dataset.sectionId;
         mappingData = mappingData.filter((m) => m.id !== id);
 
         // save sections mapping data
-        localStorage.setItem('helix-importer-sections-mapping', JSON.stringify({
-          url: originalURL,
-          mapping: mappingData,
-        }));
+        saveImporterSectionsMapping(originalURL, mappingData);
 
         rowEl.remove();
+      }
+    });
+
+    const moveUpBtn = document.createElement('sp-button');
+    moveUpBtn.setAttribute('variant', 'accent');
+    moveUpBtn.classList.add('move-up');
+    moveUpBtn.setAttribute('style', `background-color: ${section.color}`);
+    moveUpBtn.innerHTML = '<sp-icon-arrow-up></sp-icon-arrow-up>';
+    row.appendChild(moveUpBtn);
+    moveUpBtn.addEventListener('click', (e) => {
+      const rowEl = e.target.closest('.row');
+      if (rowEl) {
+        const id = rowEl.dataset.sectionId;
+        const index = mappingData.findIndex((m) => m.id === id);
+        if (index >= 0) {
+          const movedMapping = mappingData.splice(index, 1);
+          mappingData.splice(index - 1, 0, movedMapping[0]);
+
+          // save sections mapping data
+          saveImporterSectionsMapping(originalURL, mappingData);
+
+          rowEl.parentNode.insertBefore(rowEl, rowEl.previousElementSibling);
+        }
       }
     });
 
@@ -547,10 +676,10 @@ const detectSections = async (src, frame) => {
 
   // look for existing mapping data
   try {
-    const mapping = JSON.parse(localStorage.getItem('helix-importer-sections-mapping'));
-    if (mapping && mapping.url === originalURL) {
-      mappingData = mapping.mapping;
-      mapping.mapping.forEach((m) => {
+    const mapping = getImporterSectionMapping(originalURL);
+    if (mapping) {
+      mappingData = mapping;
+      mapping.forEach((m) => {
         const row = getMappingRow(m, MAPPING_EDITOR_SECTIONS.children.length);
         MAPPING_EDITOR_SECTIONS.appendChild(row);
       });
@@ -568,7 +697,14 @@ const detectSections = async (src, frame) => {
       section.mapping = 'unset';
 
       if (!mappingData.find((m) => m.id === section.id)) {
-        mappingData.push(section);
+        mappingData.push({
+          id: section.id,
+          domId: section.domId,
+          domClasses: section.domClasses,
+          xpath: section.xpath,
+          layout: section.layout,
+          color: section.color,
+        });
         const row = getMappingRow(section, MAPPING_EDITOR_SECTIONS.children.length);
         MAPPING_EDITOR_SECTIONS.appendChild(row);
       }
@@ -645,7 +781,8 @@ const attachListeners = () => {
     }
 
     const field = IS_BULK ? 'import-urls' : 'import-url';
-    const urlsArray = config.fields[field].split('\n').reverse().filter((u) => u.trim() !== '');
+    const importField = config.fields[field] ?? config.fields['detect-url'];
+    const urlsArray = importField.split('\n').reverse().filter((u) => u.trim() !== '');
     importStatus.total = urlsArray.length;
     importStatus.startTime = Date.now();
     const processNext = async () => {
@@ -802,7 +939,7 @@ const attachListeners = () => {
     disableProcessButtons();
     toggleLoadingButton(DETECT_BUTTON);
 
-    const field = /* IS_BULK ? 'import-urls' : */ 'import-url';
+    const field = /* IS_BULK ? 'import-urls' : */ 'detect-url';
     const urlsArray = config.fields[field].split('\n').reverse().filter((u) => u.trim() !== '');
     importStatus.total = urlsArray.length;
     importStatus.startTime = Date.now();
