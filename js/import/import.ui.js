@@ -12,6 +12,7 @@
 /* global CodeMirror, html_beautify, ExcelJS, WebImporter */
 import { initOptionFields, attachOptionFieldsListeners } from '../shared/fields.js';
 import { getDirectoryHandle, saveFile } from '../shared/filesystem.js';
+import { setURLFromFile } from '../shared/urlmanagement.js';
 import { asyncForEach } from '../shared/utils.js';
 import PollImporter from '../shared/pollimporter.js';
 import alert from '../shared/alert.js';
@@ -23,6 +24,7 @@ const CONFIG_PARENT_SELECTOR = `${PARENT_SELECTOR} form`;
 const PREVIEW_CONTAINER = document.querySelector(`${PARENT_SELECTOR} .page-preview`);
 
 const IMPORTFILEURL_FIELD = document.getElementById('import-file-url');
+const IMPORTURLS_BUTTON = document.getElementById('import-set-urls');
 const IMPORT_BUTTON = document.getElementById('import-doimport-button');
 
 // const SAVEASWORD_BUTTON = document.getElementById('saveAsWord');
@@ -612,6 +614,10 @@ const attachListeners = () => {
     if (config.importer) {
       await config.importer.setImportFileURL(event.target.value);
     }
+  });
+
+  IMPORTURLS_BUTTON.addEventListener('click', async (event) => {
+    await setURLFromFile(IMPORTFILEURL_FIELD.value, IS_BULK, event.ctrlKey);
   });
 
   DOWNLOAD_IMPORT_REPORT_BUTTON.addEventListener('click', (async () => {

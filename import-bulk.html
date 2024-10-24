@@ -41,7 +41,10 @@
                                 <sp-accordion-item label="Import Options">
                                     <div>
                                         <sp-field-label for="import-file-url" required>Transformation file URL</sp-field-label>
-                                        <sp-textfield class="option-field" id="import-file-url" type="url" value="http://localhost:3001/tools/importer/import.js"></sp-textfield>
+                                        <div class="spread-contents">
+                                            <sp-textfield class="option-field" id="import-file-url" type="url" value="http://localhost:3001/tools/importer/import.js"></sp-textfield>
+                                            <sp-button variant="secondary" id="import-set-urls" title="Set URLs from text file (.txt) paired with the transformation file.">Set URLs</sp-button>
+                                        </div>
 
                                         <sp-field-label for="import-pageload-timeout">Page load timeout</sp-field-label>
                                         <sp-number-field class="option-field" id="import-pageload-timeout" value="100" min="0" step="100" format-options='{ "style": "unit", "unit": "millisecond", "unitDisplay": "short" }'></sp-number-field>

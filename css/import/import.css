@@ -29,6 +29,21 @@
   height: calc(100vh - 232px);
 }
 
+.import .spread-contents {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  column-gap: 6px;
+}
+
+.import .spread-contents> *:last-child {
+  min-width: 6rem;
+}
+
+.import #import-urls textarea {
+  resize: vertical !important;
+}
+
 /* stylelint-disable-next-line selector-class-pattern */
 .import .CodeMirror {
   position: absolute;
